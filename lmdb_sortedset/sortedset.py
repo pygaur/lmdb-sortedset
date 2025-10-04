@@ -187,9 +187,20 @@ class LMDBSortedSet:
 
             with self.env.begin(db=self.zset_db, write=True) as txn:
                 for member, score in score_dict.items():
-                    # Create composite key that ensures ordering by score
-                    compound_key = self._zset_key(key, score)
                     encoded_value = encode_value(member)
+
+                    # First, remove any existing entries for this member
+                    cursor = txn.cursor()
+                    if cursor.set_range(zset_key):
+                        for compound_key, stored_value in cursor:
+                            if not compound_key.startswith(zset_key + self.SCORE_SEPARATOR):
+                                break
+                            if stored_value == encoded_value:
+                                cursor.delete()
+                                break
+
+                    # Now add the member with the new score
+                    compound_key = self._zset_key(key, score)
                     txn.put(compound_key, encoded_value)
                     result += 1
 
@@ -344,7 +355,7 @@ class LMDBSortedSet:
                 for member in members:
                     encoded_value = encode_value(member)
                     cursor = txn.cursor()
-                    
+
                     if cursor.set_range(zset_key):
                         for compound_key, stored_value in cursor:
                             # Check if we're still in the same sorted set
@@ -505,14 +516,15 @@ class LMDBSortedSet:
             2
         """
         try:
-            removed = 0
             zset_key = self._format_key(key)
             min_compound = self._zset_key(key, min_score)
+            keys_to_delete = []
 
-            with self.env.begin(db=self.zset_db, write=True) as txn:
+            # First pass: collect keys to delete
+            with self.env.begin(db=self.zset_db, write=False) as txn:
                 cursor = txn.cursor()
                 if cursor.set_range(min_compound):
-                    for compound_key, _ in list(cursor.iternext()):
+                    for compound_key, _ in cursor:
                         if not compound_key.startswith(zset_key + self.SCORE_SEPARATOR):
                             break
 
@@ -520,10 +532,14 @@ class LMDBSortedSet:
                         if score > max_score:
                             break
 
-                        cursor.delete()
-                        removed += 1
+                        keys_to_delete.append(compound_key)
 
-            return removed
+            # Second pass: delete the keys
+            with self.env.begin(db=self.zset_db, write=True) as txn:
+                for compound_key in keys_to_delete:
+                    txn.delete(compound_key)
+
+            return len(keys_to_delete)
 
         except lmdb.Error as e:
             raise LMDBOperationError(f"Failed to remove range by score: {e}") from e
@@ -548,13 +564,15 @@ class LMDBSortedSet:
         """
         try:
             results = []
+            keys_to_delete = []
             zset_key = self._format_key(key)
 
-            with self.env.begin(db=self.zset_db, write=True) as txn:
+            # First pass: collect items to pop
+            with self.env.begin(db=self.zset_db, write=False) as txn:
                 cursor = txn.cursor()
                 if cursor.set_range(zset_key):
                     popped = 0
-                    for compound_key, value in list(cursor.iternext()):
+                    for compound_key, value in cursor:
                         if popped >= count:
                             break
 
@@ -563,8 +581,13 @@ class LMDBSortedSet:
 
                         _, score = self._extract_from_zset_key(compound_key)
                         results.append((decode_value(value), score))
-                        cursor.delete()
+                        keys_to_delete.append(compound_key)
                         popped += 1
+
+            # Second pass: delete the keys
+            with self.env.begin(db=self.zset_db, write=True) as txn:
+                for compound_key in keys_to_delete:
+                    txn.delete(compound_key)
 
             return results
 
@@ -592,7 +615,7 @@ class LMDBSortedSet:
         try:
             # Get all items, then remove from the end
             items = self.zrange(key, 0, -1, withscores=True)
-            
+
             if not items:
                 return []
 
@@ -628,18 +651,25 @@ class LMDBSortedSet:
         """
         try:
             zset_key = self._format_key(key)
-            deleted = False
+            keys_to_delete = []
 
-            with self.env.begin(db=self.zset_db, write=True) as txn:
+            # First pass: collect all keys in this sorted set
+            with self.env.begin(db=self.zset_db, write=False) as txn:
                 cursor = txn.cursor()
                 if cursor.set_range(zset_key):
-                    for compound_key, _ in list(cursor.iternext()):
+                    for compound_key, _ in cursor:
                         if not compound_key.startswith(zset_key + self.SCORE_SEPARATOR):
                             break
-                        cursor.delete()
-                        deleted = True
+                        keys_to_delete.append(compound_key)
 
-            return deleted
+            # Second pass: delete all the keys
+            if keys_to_delete:
+                with self.env.begin(db=self.zset_db, write=True) as txn:
+                    for compound_key in keys_to_delete:
+                        txn.delete(compound_key)
+                return True
+
+            return False
 
         except lmdb.Error as e:
             raise LMDBOperationError(f"Failed to delete sorted set: {e}") from e
@@ -654,5 +684,3 @@ class LMDBSortedSet:
         if self.env:
             self.env.close()
             logger.info(f"LMDB SortedSet closed: {self.path}")
-
-

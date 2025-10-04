@@ -34,7 +34,7 @@ class TestLMDBSortedSetInit:
         """Test that initialization creates the database directory."""
         db_path = Path(temp_db_path) / "subdir"
         client = LMDBSortedSet(path=str(db_path))
-        
+
         assert db_path.exists()
         client.close()
 
@@ -62,28 +62,20 @@ class TestZAdd:
 
     def test_zadd_multiple_members(self, sortedset_client):
         """Test adding multiple members."""
-        result = sortedset_client.zadd("test", {
-            "member1": 100,
-            "member2": 200,
-            "member3": 150
-        })
+        result = sortedset_client.zadd("test", {"member1": 100, "member2": 200, "member3": 150})
         assert result == 3
 
     def test_zadd_updates_score(self, sortedset_client):
         """Test that zadd updates existing member's score."""
         sortedset_client.zadd("test", {"member1": 100})
         sortedset_client.zadd("test", {"member1": 200})
-        
+
         score = sortedset_client.zscore("test", "member1")
         assert score == 200.0
 
     def test_zadd_different_types(self, sortedset_client):
         """Test adding members of different types."""
-        result = sortedset_client.zadd("test", {
-            "string": 1.0,
-            123: 2.0,
-            45.67: 3.0
-        })
+        result = sortedset_client.zadd("test", {"string": 1.0, 123: 2.0, 45.67: 3.0})
         assert result == 3
 
 
@@ -281,10 +273,10 @@ class TestMultipleSortedSets:
         """Test that multiple sorted sets are independent."""
         sortedset_client.zadd("set1", {"a": 1, "b": 2})
         sortedset_client.zadd("set2", {"x": 10, "y": 20})
-        
+
         assert sortedset_client.zcard("set1") == 2
         assert sortedset_client.zcard("set2") == 2
-        
+
         assert sortedset_client.zrange("set1", 0, -1) == ["a", "b"]
         assert sortedset_client.zrange("set2", 0, -1) == ["x", "y"]
 
@@ -297,7 +289,7 @@ class TestPersistence:
         # Write data
         with LMDBSortedSet(path=temp_db_path) as client:
             client.zadd("test", {"a": 1, "b": 2, "c": 3})
-        
+
         # Read data in new client
         with LMDBSortedSet(path=temp_db_path) as client:
             result = client.zrange("test", 0, -1)
@@ -306,5 +298,3 @@ class TestPersistence:
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
-
-

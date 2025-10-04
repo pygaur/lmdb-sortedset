@@ -115,9 +115,7 @@ def format_key(key: Union[str, bytes], prefix: str = "") -> bytes:
     """
     if isinstance(key, bytes):
         key = key.decode("utf-8")
-    
+
     if prefix:
         return f"{prefix}:{key}".encode("utf-8")
     return key.encode("utf-8")
-
-

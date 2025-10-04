@@ -14,16 +14,16 @@ Key Features:
 
 Example:
     >>> from lmdb_sortedset import LMDBSortedSet
-    >>> 
+    >>>
     >>> # Create a sorted set client
     >>> with LMDBSortedSet(path="./data") as client:
     >>>     # Add members with scores
     >>>     client.zadd("leaderboard", {"player1": 100, "player2": 200, "player3": 150})
-    >>>     
+    >>>
     >>>     # Get members by score range
     >>>     players = client.zrangebyscore("leaderboard", 100, 200)
     >>>     print(players)  # ['player1', 'player3', 'player2']
-    >>>     
+    >>>
     >>>     # Get top players
     >>>     top_players = client.zrange("leaderboard", 0, 2, withscores=True)
     >>>     print(top_players)  # [('player1', 100), ('player3', 150), ('player2', 200)]
@@ -35,5 +35,3 @@ from .exceptions import LMDBSortedSetError, LMDBInitError, LMDBOperationError
 __version__ = "0.1.0"
 __author__ = "Prashant"
 __all__ = ["LMDBSortedSet", "LMDBSortedSetError", "LMDBInitError", "LMDBOperationError"]
-
-
