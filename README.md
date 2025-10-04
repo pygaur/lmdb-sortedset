@@ -321,16 +321,11 @@ For issues and questions:
 
 ## Documentation
 
-All documentation is available in the `docs/` folder:
-
-- **[Documentation Guide](docs/DOCUMENTATION.md)** - Start here for navigation
 - **[Quick Start](docs/QUICKSTART.md)** - Get started in 5 minutes
-- **[Installation Guide](docs/INSTALL.md)** - Detailed installation instructions
-- **[Project Summary](docs/SUMMARY.md)** - Complete project overview
-- **[Poetry Guide](docs/guides/POETRY_GUIDE.md)** - Using Poetry with this project
-- **[Migration Docs](docs/migration/)** - Poetry migration documentation
+- **[Installation Guide](docs/INSTALL.md)** - Detailed installation (Poetry + pip)
+- **[Poetry Guide](docs/guides/POETRY_GUIDE.md)** - Poetry development workflow
 
-For a complete index of all documentation, see [docs/INDEX.md](docs/INDEX.md)
+For a complete overview, see [docs/README.md](docs/README.md)
 
 ## Roadmap
 
